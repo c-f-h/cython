@@ -3879,6 +3879,8 @@ class IndexNode(_IndexingBaseNode):
         exception_check=None, exception_value=None):
         self.generate_subexpr_evaluation_code(code)
 
+        assign_to_mvslice = self.base.type.is_array and self.base.type.base_type.is_memoryviewslice
+
         if self.type.is_pyobject:
             self.generate_setitem_code(rhs.py_result(), code)
         elif self.base.type is bytearray_type:
@@ -3899,13 +3901,30 @@ class IndexNode(_IndexingBaseNode):
                 translate_cpp_exception(code, self.pos,
                     "%s = %s;" % (self.result(), rhs.result()),
                     self.exception_value, self.in_nogil_context)
+        elif assign_to_mvslice:
+            from . import MemoryView
+
+            MemoryView.put_acquire_memoryviewslice(
+                lhs_cname=self.result(),
+                lhs_type=self.base.type.base_type,
+                lhs_pos=self.pos,
+                rhs=rhs,
+                code=code,
+                have_gil=not self.in_nogil_context,
+                first_assignment=False) #self.cf_is_null)
+
+            if rhs.result_in_temp():
+                rhs.generate_post_assignment_code(code)
+
         else:
             code.putln(
                 "%s = %s;" % (self.result(), rhs.result()))
 
         self.generate_subexpr_disposal_code(code)
         self.free_subexpr_temps(code)
-        rhs.generate_disposal_code(code)
+        if not assign_to_mvslice:
+            # TODO: figure out is this is correct (compare to NameNode assignment code)
+            rhs.generate_disposal_code(code)
         rhs.free_temps(code)
 
     def _check_byte_value(self, code, rhs):

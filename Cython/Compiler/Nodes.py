@@ -586,7 +586,7 @@ class CArrayDeclaratorNode(CDeclaratorNode):
                     pass
         else:
             size = None
-        if not base_type.is_complete():
+        if not base_type.is_complete() and not base_type.is_memoryviewslice:    # TODO: can we simply make mvs return is_complete=1?
             error(self.pos, "Array element type '%s' is incomplete" % base_type)
         if base_type.is_pyobject:
             error(self.pos, "Array element cannot be a Python object")
