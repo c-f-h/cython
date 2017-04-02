@@ -2338,11 +2338,6 @@ class CArrayType(CPointerBaseType):
             source_code, result_code, self.size)
         return code.error_goto_if_neg(call_code, error_pos)
 
-    def global_init_code(self, entry, code):
-        if self.base_type.is_memoryviewslice:
-            from . import MemoryView
-            code.putln("memset(%s, 0, %s * sizeof(%s));" %
-                    (entry.cname, self.size, MemoryView.memviewslice_cname))
 
 class CPtrType(CPointerBaseType):
     #  base_type     CType              Reference type
